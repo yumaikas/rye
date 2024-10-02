@@ -2977,7 +2977,7 @@ var builtins = map[string]*env.Builtin{
 
 	"lcp": {
 		Argsn: 0,
-		Doc:   "Lists words in current context",
+		Doc:   "Lists words in parent context",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			if ps.Ctx.Parent != nil {
 				fmt.Println(ps.Ctx.Parent.Preview(*ps.Idx, ""))
@@ -3006,7 +3006,7 @@ var builtins = map[string]*env.Builtin{
 	},
 	"lcp\\": {
 		Argsn: 1,
-		Doc:   "Lists words in current context with string filter",
+		Doc:   "Lists words in parent context with string filter",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			switch s1 := arg0.(type) {
 			case env.String:
@@ -7884,7 +7884,7 @@ var builtins = map[string]*env.Builtin{
 
 	"rye": {
 		Argsn: 0,
-		Doc:   "",
+		Doc:   "Interact with the rye runtime",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			return *env.NewNative(ps.Idx, BuiltinNames, "Rye-itself")
 		},
@@ -7892,7 +7892,7 @@ var builtins = map[string]*env.Builtin{
 
 	"Rye-itself//needs": {
 		Argsn: 2,
-		Doc:   "",
+		Doc:   "List modules that are needed by this script",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			switch mod := arg1.(type) {
 			case env.Block:
@@ -7958,7 +7958,7 @@ var builtins = map[string]*env.Builtin{
 	},
 	"Rye-itself//args": {
 		Argsn: 1,
-		Doc:   "",
+		Doc:   "returns a block that contains the arguments passed to this program",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			return util.StringToFieldsWithQuoted(strings.Join(os.Args[2:], " "), " ", "\"")
 			// block, _ := loader.LoadString(os.Args[0], false)
@@ -7967,7 +7967,7 @@ var builtins = map[string]*env.Builtin{
 	},
 	"Rye-itself//args\\raw": {
 		Argsn: 1,
-		Doc:   "",
+		Doc:   "returns a string that contains all of the arguments passed to this program",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			if len(os.Args) > 1 {
 				return *env.NewString(strings.Join(os.Args[2:], " "))
