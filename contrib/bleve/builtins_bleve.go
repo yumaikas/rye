@@ -129,13 +129,13 @@ var Builtins_bleve = map[string]*env.Builtin{
 
 	"bleve-index//index": {
 		Argsn: 3,
-		Doc:   "[ ses-session* gomail-message from-email recipients ]",
+		Doc:   "(idx ident doc) Index ident into idx out of doc",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			switch idx := arg0.(type) {
 			case env.Native:
-				switch ident := arg1.(type) { // gomail-message
+				switch ident := arg1.(type) { //
 				case env.String:
-					switch text := arg2.(type) { // recipients
+					switch text := arg2.(type) { //
 					case env.String:
 						var doc any
 						json.Unmarshal([]byte(text.Value), &doc)
