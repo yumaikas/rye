@@ -728,52 +728,68 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 		Argsn: 4,
 		Doc:   "Adds a new column to spreadsheet. Changes in-place and returns the new spreadsheet.",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
+			var sheet *env.Spreadsheet
+			var isRef bool
 			switch spr := arg0.(type) {
 			case env.Spreadsheet:
-				switch newCol := arg1.(type) {
-				case env.Word:
-					switch fromCols := arg2.(type) {
+				sheet = &spr
+				isRef = false
+			case *env.Spreadsheet:
+				sheet = spr
+				isRef = true
+			default:
+				return MakeArgError(ps, 1, []env.Type{env.SpreadsheetType}, "add-column!")
+			}
+
+			switch newCol := arg1.(type) {
+			case env.Word:
+				switch fromCols := arg2.(type) {
+				case env.Block:
+					switch code := arg3.(type) {
 					case env.Block:
-						switch code := arg3.(type) {
-						case env.Block:
-							return GenerateColumn(ps, spr, newCol, fromCols, code)
-						default:
-							return MakeArgError(ps, 4, []env.Type{env.BlockType}, "add-column!")
+						if isRef {
+							return GenerateColumn(ps, sheet, newCol, fromCols, code)
+						} else {
+							return GenerateColumnCopySheet(ps, *sheet, newCol, fromCols, code)
 						}
-					case env.Word:
-						switch replaceBlock := arg3.(type) {
-						case env.Block:
-							if replaceBlock.Series.Len() != 2 {
-								return MakeBuiltinError(ps, "Replacement block must contain a regex object and replacement string.", "add-column!")
-							}
-							regexNative, ok := replaceBlock.Series.S[0].(env.Native)
-							if !ok {
-								return MakeBuiltinError(ps, "First element of replacement block must be a regex object.", "add-column!")
-							}
-							regex, ok := regexNative.Value.(*regexp.Regexp)
-							if !ok {
-								return MakeBuiltinError(ps, "First element of replacement block must be a regex object.", "add-column!")
-							}
-							replaceStr, ok := replaceBlock.Series.S[1].(env.String)
-							if !ok {
-								return MakeBuiltinError(ps, "Second element of replacement block must be a string.", "add-column!")
-							}
-							err := GenerateColumnRegexReplace(ps, &spr, newCol, fromCols, regex, replaceStr.Value)
-							if err != nil {
-								return err
-							}
-							return spr
-						default:
-							return MakeArgError(ps, 3, []env.Type{env.BlockType}, "add-column!")
+					default:
+						return MakeArgError(ps, 4, []env.Type{env.BlockType}, "add-column!")
+					}
+				case env.Word:
+					switch replaceBlock := arg3.(type) {
+					case env.Block:
+						if replaceBlock.Series.Len() != 2 {
+							return MakeBuiltinError(ps, "Replacement block must contain a regex object and replacement string.", "add-column!")
+						}
+						regexNative, ok := replaceBlock.Series.S[0].(env.Native)
+						if !ok {
+							return MakeBuiltinError(ps, "First element of replacement block must be a regex object.", "add-column!")
+						}
+						regex, ok := regexNative.Value.(*regexp.Regexp)
+						if !ok {
+							return MakeBuiltinError(ps, "First element of replacement block must be a regex object.", "add-column!")
+						}
+						replaceStr, ok := replaceBlock.Series.S[1].(env.String)
+						if !ok {
+							return MakeBuiltinError(ps, "Second element of replacement block must be a string.", "add-column!")
+						}
+						err := GenerateColumnRegexReplace(ps, sheet, newCol, fromCols, regex, replaceStr.Value)
+						if err != nil {
+							return err
+						}
+						if isRef {
+							return sheet
+						} else {
+							return *sheet
 						}
 					default:
 						return MakeArgError(ps, 3, []env.Type{env.BlockType}, "add-column!")
 					}
 				default:
-					return MakeArgError(ps, 2, []env.Type{env.WordType}, "add-column!")
+					return MakeArgError(ps, 3, []env.Type{env.BlockType}, "add-column!")
 				}
 			default:
-				return MakeArgError(ps, 1, []env.Type{env.SpreadsheetType}, "add-column!")
+				return MakeArgError(ps, 2, []env.Type{env.WordType}, "add-column!")
 			}
 		},
 	},
@@ -1033,7 +1049,11 @@ func DropColumns(ps *env.ProgramState, s env.Spreadsheet, names []env.String) en
 	return newSheet
 }
 
-func GenerateColumn(ps *env.ProgramState, s env.Spreadsheet, name env.Word, extractCols env.Block, code env.Block) env.Object {
+func GenerateColumnCopySheet(ps *env.ProgramState, s env.Spreadsheet, name env.Word, extractCols env.Block, code env.Block) env.Object {
+	return GenerateColumn(ps, &s, name, extractCols, code)
+}
+
+func GenerateColumn(ps *env.ProgramState, s *env.Spreadsheet, name env.Word, extractCols env.Block, code env.Block) env.Object {
 	// add name to columns
 	s.Cols = append(s.Cols, ps.Idx.GetWord(name.Index))
 	for ix, row := range s.Rows {
@@ -1077,7 +1097,7 @@ func GenerateColumn(ps *env.ProgramState, s env.Spreadsheet, name env.Word, extr
 		// set the result of code block as the new column value in this row
 		// TODO -- make
 		row.Values = append(row.Values, ps.Res)
-		row.Uplink = &s
+		row.Uplink = s
 		s.Rows[ix] = row
 	}
 	return s

@@ -1,6 +1,6 @@
 ; Create a spreadsheet
 
-deliveries: thaw spreadsheet { "street" "city" "zip" "contents" } 
+deliveries: ref spreadsheet { "street" "city" "zip" "contents" } 
 [
 	"Maple" "Onowa" "55555" "A bottle of Maple Syrup"
 	"Oak" "Springfield" "11111" "A donut-shaped stuffed animal"

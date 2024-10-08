@@ -7800,6 +7800,8 @@ var builtins = map[string]*env.Builtin{
 				return *env.NewInteger(int64(s1.Series.Len()))
 			case env.Spreadsheet:
 				return *env.NewInteger(int64(len(s1.Rows)))
+			case *env.Spreadsheet:
+				return *env.NewInteger(int64(len(s1.Rows)))
 			case env.RyeCtx:
 				return *env.NewInteger(int64(s1.GetWords(*ps.Idx).Series.Len()))
 			case env.Vector:

@@ -12,15 +12,13 @@ section "spreadsheet mutations"
             "Animal Farm" "9780151002177" 2.49 10
             "An Oxford Anthology of Shakespeare" "9780198129356" 19.99 10
             "And Then There Were None" "9780062073488" 3.99 10
-        } |thaw ::cart 
+        } |ref ::cart 
          cart |nth 1 -> "title" } "Do Androids Dream of Electric Sheep?" 
         equal { cart |nth 3 -> "price" } 19.99
 
         equal { cart .remove-row! 1 cart .nth 1 -> "title" } "Animal Farm"
         equal { 
             rowdict: dict { "title" "Windowlight" "isbn" "0000000000000" "price" 0.99 "quantity" 1 } 
-            probe rowdict
-            print rowdict .type?
             cart .update-row! 1 rowdict
             cart .nth 1 -> "isbn"
         } "0000000000000"
@@ -29,6 +27,14 @@ section "spreadsheet mutations"
             cart .update-row! 3 updatefn
             cart .nth 3 -> "isbn"
         } "0123456789012"
+
+        equal { try { cart .deref |remove-row! 1 } |type? } 'error
+        equal { try { cart .deref .ref ::cartcopy 
+        cartcopy |remove-row! 1 } |type? } 'spreadsheet
+        equal { cart .length? > cartcopy .length? } true
+        equal { cart .add-column! 'checksum { } { "ABCDEF" } 'done } 'done
+        equal { cart .deref .add-column! 'derp { } { "ABCDEF" } 'done } 'done
+        equal { cart |header? |last } "checksum"
         
     }
 
