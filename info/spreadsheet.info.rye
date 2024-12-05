@@ -12,6 +12,17 @@ section "base" "base text" {
 		equal { spreadsheet { 'a } { 1 2 } |type? } 'spreadsheet
 	}
 
+	group "spreadsheet\\columns" 
+	""
+	{
+	}
+
+	{
+		equal {
+		spreadsheet\columns { 'a 'b } { { 1 2 } { "x" "y" } }
+		} spreadsheet { 'a 'b } { 1 "x" 2 "y" }
+	}
+
 	group "spreadsheet\\rows" 
 	""
 	{
@@ -34,6 +45,17 @@ section "base" "base text" {
 		equal { to-spreadsheet list [ dict { "a" 1 } dict { "a" b } ] |type? } 'spreadsheet
 	}
 
+	group "row-to-dict" 
+	""
+	{
+	}
+
+	{
+		equal {
+		spreadsheet { 'a 'b } { 1 10 } |nth 1 |row-to-dict
+		} dict { 'a 1 'b 10 }
+	}
+
 	group "add-rows" 
 	""
 	{
@@ -48,8 +70,8 @@ section "base" "base text" {
 		} 3
 		equal {
 		ref spreadsheet { "a" "b" } { 1 80 2 90 } :sheet
-		sheet .deref |add-rows { 3 30 } |length?
-		} 3
+		sheet .deref |add-rows { 3 30 } |nth 3 |row-to-dict
+		} dict { "a" 3 "b" 30 }
 	}
 
 	group "add-rows!" 
@@ -64,7 +86,8 @@ section "base" "base text" {
 		equal {
 		ref spreadsheet { "a" "b"  } { 1 10 2 20 } :sheet
 		sheet .add-rows! [ 3 30 ] sheet .deref .length?
-		} 3
+		sheet |nth 3 |row-to-dict
+		} dict { "a" 3 "b" 30 }
 	}
 
 	group "update-row!" 
@@ -84,10 +107,10 @@ section "base" "base text" {
 		} 111
 		equal {
 		spr1: ref spreadsheet { "a" "b" } { 1 10 2 20 }
-		incrA: fn { row } { row + [ "a" ( "a" <- row ) + 9 ] }
+		incrA: fn { row } { row + [ "a" ( "a" <- row ) + 9 "b" 2 ] }
 		update-row! spr1 1 ?incrA
-		spr1 |deref |A1
-		} 10
+		spr1 |deref |nth 1 |row-to-dict
+		} dict { "a" 10 "b" 2 }
 	}
 
 	group "remove-row!" 
@@ -102,8 +125,8 @@ section "base" "base text" {
 		equal {
 		spr1: ref spreadsheet { "a" "b" } { 1 10 2 20 }
 		spr1 .remove-row! 1
-		spr1 .deref .A1
-		} 2
+		spr1 .deref |first |row-to-dict
+		} dict { "a" 2 "b" 20 }
 	}
 
 	group "load\\csv" 
@@ -178,6 +201,21 @@ section "base" "base text" {
 		spr2:: load\xlsx f |autotype 1.0
 		spr1 = spr2
 		} true
+	}
+
+	group "where-equal" 
+	""
+	{
+		arg "* sheet"
+		arg "* column"
+		arg "* value"
+		arg "Tags: #filter #spreadsheets"
+	}
+
+	{
+		equal {
+		spreadsheet { "name" } { "Enno" "Enya" "Enid" "Bob" "Bill" } |where-equal 'name "Enno" |first |row-to-dict
+		} dict { "name" "Enno" }
 	}
 
 	group "col-sum" 

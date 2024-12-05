@@ -77,8 +77,10 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 			}
 		},
 	},
-	// Example:
-	//  spreadsheet\columns { 'a 'b } { { 1 2 } { "x" "y" } }
+	// Tests:
+	//  equal {
+	//	 spreadsheet\columns { 'a 'b } { { 1 2 } { "x" "y" } }
+	// } spreadsheet { 'a 'b } { 1 "x" 2 "y" }
 	"spreadsheet\\columns": {
 		Argsn: 2,
 		Doc:   "Creats a spreadsheet by accepting a block of columns",
@@ -244,6 +246,24 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 			}
 		},
 	},
+	// Tests:
+	// equal {
+	//   spreadsheet { 'a 'b } { 1 10 } |nth 1 |row-to-dict
+	// } dict { 'a 1 'b 10 }
+	"row-to-dict": {
+		Argsn: 1,
+		Doc:   "Turn a spreadsheet row into a dictionary",
+		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
+			switch row := arg0.(type) {
+			case env.SpreadsheetRow:
+				return RowToDict(row)
+			case *env.SpreadsheetRow:
+				return RowToDict(*row)
+			default:
+				return MakeArgError(ps, 1, []env.Type{env.SpreadsheetRowType}, "spread")
+			}
+		},
+	},
 
 	// Add one or more rows to a spreadsheet, returning a new spreadsheet
 	// The `rows` argument can take one of two types:
@@ -258,8 +278,8 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 	//  } 3
 	//  equal {
 	//	 ref spreadsheet { "a" "b" } { 1 80 2 90 } :sheet
-	//   sheet .deref |add-rows { 3 30 } |length?
-	//  } 3
+	//   sheet .deref |add-rows { 3 30 } |nth 3 |row-to-dict
+	//  } dict { "a" 3 "b" 30 }
 	// Args:
 	// * sheet - the sheet that is getting rows added to it
 	// * rows - a block containing one or more rows worth of values, or a SpreadsheetRow Native value
@@ -312,7 +332,8 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 	//  equal {
 	//	 ref spreadsheet { "a" "b"  } { 1 10 2 20 } :sheet
 	//   sheet .add-rows! [ 3 30 ] sheet .deref .length?
-	//  } 3
+	//   sheet |nth 3 |row-to-dict
+	//  } dict { "a" 3 "b" 30 }
 	// Args:
 	// * sheet - the reference to the sheet that is getting rows added to it
 	// * rows - a block containing one or more rows worth of values, or a SpreadsheetRow Native value
@@ -358,10 +379,10 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 	//  } 111
 	//  equal {
 	//	 spr1: ref spreadsheet { "a" "b" } { 1 10 2 20 }
-	//	 incrA: fn { row } { row + [ "a" ( "a" <- row ) + 9 ] }
+	//	 incrA: fn { row } { row + [ "a" ( "a" <- row ) + 9 "b" 2 ] }
 	//	   update-row! spr1 1 ?incrA
-	//     spr1 |deref |A1
-	//  } 10
+	//     spr1 |deref |nth 1 |row-to-dict
+	//  } dict { "a" 10 "b" 2 }
 	// Args:
 	// * sheet-ref - A ref to a spreadsheet
 	// * idx - the index of the row to update, 1-based
@@ -425,8 +446,8 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 	//  equal {
 	//   spr1: ref spreadsheet { "a" "b" } { 1 10 2 20 }
 	//   spr1 .remove-row! 1
-	//   spr1 .deref .A1
-	//  } 2
+	//   spr1 .deref |first |row-to-dict
+	//  } dict { "a" 2 "b" 20 }
 	// Args:
 	// * sheet-ref
 	// * row-idx - Index of row to remove, 1-based
@@ -731,6 +752,10 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 	// Example: filtering for rows with the name "Enno"
 	//  sheet: spreadsheet { "name" } { "Enno" "Enya" "Enid" "Bob" "Bill" }
 	//  sheet .where-equal 'name "Enno"
+	// Tests:
+	// equal {
+	//    spreadsheet { "name" } { "Enno" "Enya" "Enid" "Bob" "Bill" } |where-equal 'name "Enno" |first |row-to-dict
+	// } dict { "name" "Enno" }
 	// Args:
 	// * sheet
 	// * column
@@ -764,13 +789,14 @@ var Builtins_spreadsheet = map[string]*env.Builtin{
 			}
 		},
 	},
+	//
 	// Args:
 	// * sheet
 	// * column
 	// Tags: #filter #spreadsheets
 	"where-void": {
 		Argsn: 2,
-		Doc:   "Returns spreadsheet of rows where specific colum is equal to given value.",
+		Doc:   "Returns spreadsheet of rows where specific column is void.",
 		Fn: func(ps *env.ProgramState, arg0 env.Object, arg1 env.Object, arg2 env.Object, arg3 env.Object, arg4 env.Object) env.Object {
 			switch spr := arg0.(type) {
 			case *env.Spreadsheet:
@@ -1773,6 +1799,15 @@ func SheetFromColumnsMapData(ps *env.ProgramState, cols []string, arg1 env.Objec
 	default:
 		return MakeBuiltinError(ps, fmt.Sprintf("Expected either a Block of a list of data columns, got %v instead", colSet), "spreadsheet\\columns")
 	}
+}
+
+func RowToDict(row env.SpreadsheetRow) env.Object {
+	data := make(map[string]any)
+	for i, c := range row.Uplink.Cols {
+		data[c] = row.Values[i]
+	}
+
+	return env.NewDict(data)
 }
 
 func SheetFromColumns(ps *env.ProgramState, arg0 env.Object, arg1 env.Object) (res env.Object) {
